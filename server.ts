@@ -31,6 +31,10 @@ app.get('/health', (req, res) => {
   res.json({ success: true, status: 'ok', message: 'Server is running' });
 });
 
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API test route is working!' });
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
