@@ -25,7 +25,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadRoutes); 
 app.use('/api/analytics', analyticsRoutes);
-
+app.get('/api/version', (req, res) => {
+  res.json({ 
+    version: '1.0.0',
+    deployTime: new Date().toISOString(),
+    routes: ['/health', '/api/auth/register', '/api/auth/login', '/api/leads']
+  });
+});
 // Health check
 app.get('/health', (req, res) => {
   res.json({ success: true, status: 'ok', message: 'Server is running' });
