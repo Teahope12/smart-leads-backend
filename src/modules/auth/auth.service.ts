@@ -4,6 +4,7 @@ import { IRegisterInput, ILoginInput, IAuthResponse } from './auth.types';
 
 export class AuthService {
   async register(userData: IRegisterInput) {
+    console.log('📝 Register service called for:', userData.email);
     const existingUser = await User.findOne({ email: userData.email });
     if (existingUser) {
       throw new Error('User already exists with this email');
