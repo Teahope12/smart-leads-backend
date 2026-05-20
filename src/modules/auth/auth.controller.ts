@@ -6,6 +6,7 @@ const authService = new AuthService();
 
 export class AuthController {
   async register(req: Request, res: Response) {
+    console.log('✅ Register endpoint hit!'); // Debug log
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
