@@ -13,11 +13,14 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost'],
+  origin: '*',  // TEMPORARY - allows all origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// ✅ Handle preflight requests explicitly
+app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -25,10 +28,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/leads', leadRoutes); 
 app.use('/api/analytics', analyticsRoutes);
-
+app.get('/api/version', (req, res) => {
+  res.json({ 
+    version: '1.0.0',
+    deployTime: new Date().toISOString(),
+    routes: ['/health', '/api/auth/register', '/api/auth/login', '/api/leads']
+  });
+});
 // Health check
 app.get('/health', (req, res) => {
   res.json({ success: true, status: 'ok', message: 'Server is running' });
+});
+
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API test route is working!' });
 });
 
 // 404 handler
