@@ -14,16 +14,13 @@ export class LeadService {
   async getLeads(filters: ILeadFilters, userId: string, userRole: string): Promise<IPaginatedResponse> {
     const query: any = {};
     
-    // Apply filters
     if (filters.status) query.status = filters.status;
     if (filters.source) query.source = filters.source;
     
-    // Non-admin users can only see their own leads
     if (userRole !== 'Admin') {
       query.createdBy = new mongoose.Types.ObjectId(userId);
     }
     
-    // Search by name or email
     if (filters.search) {
       query.$or = [
         { name: { $regex: filters.search, $options: 'i' } },
@@ -31,12 +28,9 @@ export class LeadService {
       ];
     }
     
-    // Pagination
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
-    
-    // Sorting
     const sortOrder = filters.sort === 'oldest' ? 1 : -1;
     
     const [leads, total] = await Promise.all([
@@ -67,31 +61,72 @@ export class LeadService {
       throw new Error('Lead not found');
     }
     
-    // Check access
+    // ✅ FIXED: Convert both to strings for proper comparison
     const createdBy = lead.createdBy as any;
-    if (userRole !== 'Admin' && createdBy._id.toString() !== userId) {
-      throw new Error('Access denied');
+    const leadOwnerId = createdBy._id.toString();
+    const requestingUserId = userId.toString();
+    
+    console.log('🔍 Access Check:');
+    console.log('  Lead Owner ID:', leadOwnerId);
+    console.log('  Requesting User ID:', requestingUserId);
+    console.log('  User Role:', userRole);
+    
+    if (userRole !== 'Admin' && leadOwnerId !== requestingUserId) {
+      throw new Error('Access denied: You can only access leads you created');
     }
     
     return lead;
   }
 
   async updateLead(id: string, updateData: Partial<ILeadInput>, userId: string, userRole: string) {
-    // First check if lead exists and user has access
-    await this.getLeadById(id, userId, userRole);
-    
-    const lead = await Lead.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('createdBy', 'name email');
-    
-    return lead;
+  const lead = await Lead.findById(id);
+  
+  if (!lead) {
+    throw new Error('Lead not found');
   }
+  
+  const leadOwnerId = lead.createdBy.toString();
+  const requestingUserId = userId.toString();
+  
+  let hasPermission = false;
+  
+  if (userRole === 'Admin') {
+    hasPermission = true;
+  } else if (leadOwnerId === requestingUserId) {
+    hasPermission = true;
+  }
+  
+  if (!hasPermission) {
+    throw new Error('Access denied: You can only edit leads you created');
+  }
+  
+  // ✅ Fix the deprecation warning - use returnDocument instead of new
+  const updatedLead = await Lead.findByIdAndUpdate(
+    id,
+    updateData,
+    { 
+      returnDocument: 'after',  // Replace 'new: true' with this
+      runValidators: true 
+    }
+  ).populate('createdBy', 'name email');
+  
+  return updatedLead;
+}
 
   async deleteLead(id: string, userId: string, userRole: string) {
-    // First check if lead exists and user has access
-    await this.getLeadById(id, userId, userRole);
+    
+    const lead = await Lead.findById(id);
+    
+    if (!lead) {
+      throw new Error('Lead not found');
+    }
+    
+    const leadOwnerId = lead.createdBy.toString();
+    const requestingUserId = userId.toString();
+    
+    if (userRole !== 'Admin' && leadOwnerId !== requestingUserId) {
+      throw new Error('Access denied: You can only delete leads you created');
+    }
     
     await Lead.findByIdAndDelete(id);
     return { message: 'Lead deleted successfully' };
